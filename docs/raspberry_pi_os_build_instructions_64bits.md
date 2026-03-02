@@ -7,7 +7,7 @@ For this setup to work, I have modified:
 - camera.py
 - pivideostream.py
 
-Current limitations:
+Current issues:
 - Camera colors are inverted.
 - Motion is not as smooth as expected.
 - These issues may be related to RGB/BGR ordering in the ST7789.py and pivideostream.py modifications.
@@ -41,7 +41,7 @@ sudo apt-get update && sudo apt-get dist-upgrade -y
 ```
 
 ### Configure the Pi
-Launch the Raspberry Pi's System Configuration tool using the command:
+Launch the Raspberry Pi's System Configuration tool:
 ```bash
 sudo raspi-config
 ```
@@ -56,15 +56,6 @@ Set the following:
         * Use the `TAB` button to select `Ok` and press `ENTER`
         * On the next screen select `en_US.UTF-8` for the default locale
 
-Each command should be run individually, unless it's specified as a multi-line command.
-### Change the default password
-Change the system's default password from the default "raspberry". Run the command:
-```bash
-passwd
-```
-
-You will be prompted to enter the current password ("raspberry") and then to enter a new password twice. In our prepared release image, the password used is `AirG@pped!`.
-
 ### Install dependencies
 ```bash
 sudo apt update && sudo apt install -y libzbar0 libbcm2835-dev python3-pip \
@@ -74,7 +65,7 @@ sudo apt update && sudo apt install -y libzbar0 libbcm2835-dev python3-pip \
 
 ### Download the SeedSigner code:
 ```bash
-git clone -b dev https://github.com/bon3k/seedsigner.git
+git clone -b bon3k-dev https://github.com/bon3k/seedsigner.git
 cd seedsigner
 ```
 
