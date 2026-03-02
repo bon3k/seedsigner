@@ -27,7 +27,7 @@ Additionally, the Python version shipped with Debian 13 requires updating certai
 * Choose any password.
 * Configure Wi-Fi and enable **SSH** during setup.
 
-### 3. Connect to the Raspberry Pi
+### Connect to the Raspberry Pi
 Boot the Raspberry Pi and connect via SSH:
 
 ```bash
@@ -63,13 +63,13 @@ sudo apt update && sudo apt install -y libzbar0 libbcm2835-dev python3-pip \
    git python3-picamera2 libcamera-apps qrencode
 ```
 
-### Download the SeedSigner code:
+### Download the SeedSigner code
 ```bash
 git clone -b bon3k-dev https://github.com/bon3k/seedsigner.git
 cd seedsigner
 ```
 
-### Set Up Python Environment (custom fork):
+### Set Up Python Environment:
 ```bash
 python3 -m venv --system-site-packages /home/pi/venv
 source /home/pi/venv/bin/activate
@@ -92,6 +92,8 @@ console=serial0,115200 console=tty1 root=PARTUUID=2fa4ba7e-02 rootfstype=ext4 el
 sudo nano /home/pi/seedsigner/src/run_seedsigner.sh
 ```
 
+Add the following contents:
+
 ```ini
 #!/bin/bash
 
@@ -104,13 +106,13 @@ python3 /home/pi/seedsigner/src/main.py
 
 Use `CTRL-X` and `y` to exit and save changes.
 
-### Make it executable:
+### Make it executable
 
 ```bash
 sudo chmod +x /home/pi/seedsigner/src/run_seedsigner.sh
 ```
 
-### Configure `systemd` to run SeedSigner at boot:
+### Configure `systemd` to run SeedSigner at boot
 
 ```bash
 sudo nano /etc/systemd/system/seedsigner.service
@@ -118,6 +120,7 @@ sudo nano /etc/systemd/system/seedsigner.service
 
 Add the following contents to the text file that was created:
 If you are not using the username pi, then replace `pi` in the service section below with your username. There are 3 lines to change.
+
 ```ini
 [Unit]
 Description=Seedsigner
