@@ -21,7 +21,7 @@ The virtual environment is created using `--system-site-packages` because some d
 Additionally, the Python version shipped with Debian 13 requires updating certain pip packages inside the virtual environment, so some dependencies are installed at their latest compatible versions.
 
 
-### Flash Raspberry Pi OS Lite
+### Flash Raspberry Pi OS Lite 64-bit
 * Use Raspberry Pi Imager.
 * Set the **hostname** and **username** to `pi`.
 * Choose any password.
@@ -84,6 +84,30 @@ This allows `ST7789.py` to update the LCD without performing multiple write oper
 Example `cmdline.txt` contents:
 ```
 console=serial0,115200 console=tty1 root=PARTUUID=2fa4ba7e-02 rootfstype=ext4 elevator=deadline fsck.repair=yes rootwait modules-load=dwc2,g_ether spidev.bufsiz=131072
+```
+
+### Make run_seedsigner.sh:
+
+```bash
+sudo nano /home/pi/seedsigner/src/run_seedsigner.sh
+```
+
+```ini
+#!/bin/bash
+
+# Activate the virtual environment
+source /home/pi/venv/bin/activate
+
+# Run SeedSigner
+python3 /home/pi/seedsigner/src/main.py
+```
+
+Use `CTRL-X` and `y` to exit and save changes.
+
+### Make it executable:
+
+```bash
+sudo chmod +x /home/pi/seedsigner/src/run_seedsigner.sh
 ```
 
 ### Configure `systemd` to run SeedSigner at boot:
