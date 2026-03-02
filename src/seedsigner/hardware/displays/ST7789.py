@@ -161,7 +161,11 @@ class ST7789(BaseDisplayDriver):
             raise ValueError('Image must be same dimensions as display \
                 ({0}x{1}).' .format(self.width, self.height))
         # convert 24-bit RGB-8:8:8 to gBRG-3:5:5:3; then per-pixel byteswap to 16-bit RGB-5:6:5
-        arr = array.array("H", Image.convert("BGR;16").tobytes())
+#        arr = array.array("H", Image.convert("BGR;16").tobytes())
+############################################################################
+        img_rgb = Image.convert("RGB")
+        arr = array.array("H", ((r>>3)<<11 | (g>>2)<<5 | (b>>3) for r, g, b in img_rgb.getdata()))
+############################################################################
         arr.byteswap()
         pix = arr.tobytes()
         self.SetWindows ( 0, 0, self.width, self.height)

@@ -5,8 +5,9 @@ from PIL import Image
 
 from seedsigner.models.settings import Settings, SettingsConstants
 from seedsigner.models.singleton import Singleton
+from seedsigner.hardware.pivideostream import PiVideoStream
 
-
+from picamera2 import Picamera2
 
 class CameraConnectionError(Exception):
     pass
@@ -28,16 +29,15 @@ class Camera(Singleton):
 
 
     def start_video_stream_mode(self, resolution=(512, 384), framerate=12, format="bgr"):
-        from picamera import PiCameraError
-        from seedsigner.hardware.pivideostream import PiVideoStream
+#        from picamera import PiCameraError
+#        from seedsigner.hardware.pivideostream import PiVideoStream
         if self._video_stream is not None:
             self.stop_video_stream_mode()
 
         try:
             self._video_stream = PiVideoStream(resolution=resolution,framerate=framerate, format=format)
             self._video_stream.start()
-        except PiCameraError:
-            # This error most often occurs because the camera connection is loose
+        except Exception:
             raise CameraConnectionError()
 
 
@@ -47,10 +47,13 @@ class Camera(Singleton):
         frame = self._video_stream.read()
         if not as_image:
             return frame
-        else:
-            if frame is not None:
-                return Image.fromarray(frame.astype('uint8'), 'RGB').convert('RGBA').rotate(90 + self._camera_rotation)
-        return None
+        
+        if frame is not None:
+            img = Image.fromarray(frame)
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            return img.rotate(90 + self._camera_rotation)
+        return None    
 
 
     def stop_video_stream_mode(self):
@@ -60,41 +63,40 @@ class Camera(Singleton):
 
 
     def start_single_frame_mode(self, resolution=(720, 480)):
-        from picamera import PiCamera, PiCameraError
+#        from picamera import PiCamera, PiCameraError
         if self._video_stream is not None:
             self.stop_video_stream_mode()
         if self._picamera is not None:
             self._picamera.close()
 
         try:
-            self._picamera = PiCamera(resolution=resolution, framerate=24)
-            self._picamera.start_preview()
-        except PiCameraError:
-            # This error most often occurs because the camera connection is loose
+            self._picamera2 = Picamera2()
+            config = self._picamera2.create_still_configuration(main={"size": resolution, "format": "RGB888"})
+            self._picamera2.configure(config)
+            self._picamera2.start()
+        except Exception:
             raise CameraConnectionError()
 
 
+
     def capture_frame(self):
-        if self._picamera is None:
+        if self._picamera2 is None:
             raise Exception("Must call start_single_frame_mode first.")
 
-        # Set auto-exposure values
-        self._picamera.shutter_speed = self._picamera.exposure_speed
-        self._picamera.exposure_mode = 'off'
-        g = self._picamera.awb_gains
-        self._picamera.awb_mode = 'off'
-        self._picamera.awb_gains = g
+        frame = self._picamera2.capture_array("main")
+        img = Image.fromarray(frame)
 
-        stream = io.BytesIO()
-        self._picamera.capture(stream, format='jpeg')
+        if img.mode != "RGB":
+            img = img.convert("RGB")
 
-        # "Rewind" the stream to the beginning so we can read its content
-        stream.seek(0)
-        return Image.open(stream).rotate(90 + self._camera_rotation)
+        return img.rotate(90 + self._camera_rotation)
+
+
 
 
     def stop_single_frame_mode(self):
-        if self._picamera is not None:
-            self._picamera.close()
-            self._picamera = None
+        if self._picamera2 is not None:
+            self._picamera2.stop()
+            self._picamera2.close()
+            self._picamera2 = None
 
