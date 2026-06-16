@@ -1,6 +1,6 @@
 import logging
 from typing import List
-from gpiozero import OutputDevice, DigitalInputDevice
+import RPi.GPIO as GPIO
 import time
 
 from seedsigner.models.singleton import Singleton
@@ -9,16 +9,33 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# NES controller wiring (BCM)
+# NES controller wiring (BOARD mode)
 # ============================================================
 
-DATA_PIN = 17
-LATCH_PIN = 22
-CLOCK_PIN = 27
+DATA_PIN = 11   # BCM17  -> BOARD11
+LATCH_PIN = 15  # BCM22  -> BOARD15
+CLOCK_PIN = 13  # BCM27  -> BOARD13
 
-latch = OutputDevice(LATCH_PIN)
-clock = OutputDevice(CLOCK_PIN)
-data = DigitalInputDevice(DATA_PIN, pull_up=True)
+
+# ============================================================
+# GPIO init
+# ============================================================
+
+_gpio_initialized = False
+
+
+def _init_gpio():
+
+    global _gpio_initialized
+
+    if _gpio_initialized:
+        return
+
+    GPIO.setup(DATA_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(LATCH_PIN, GPIO.OUT, initial=GPIO.LOW)
+    GPIO.setup(CLOCK_PIN, GPIO.OUT, initial=GPIO.LOW)
+
+    _gpio_initialized = True
 
 
 # ============================================================
@@ -26,25 +43,30 @@ data = DigitalInputDevice(DATA_PIN, pull_up=True)
 # ============================================================
 
 def read_controller():
+    _init_gpio()
+
     states = []
 
-    latch.on()
+    GPIO.output(LATCH_PIN, GPIO.HIGH)
     time.sleep(0.00001)
-    latch.off()
+    GPIO.output(LATCH_PIN, GPIO.LOW)
 
     for _ in range(8):
-        states.append(data.value)
+        states.append(not GPIO.input(DATA_PIN))
 
-        clock.on()
+        GPIO.output(CLOCK_PIN, GPIO.HIGH)
         time.sleep(0.00001)
 
-        clock.off()
+        GPIO.output(CLOCK_PIN, GPIO.LOW)
         time.sleep(0.00001)
 
     return states
 
 
-# Indexes returned by the NES controller
+# ============================================================
+# NES button mapping
+# ============================================================
+
 NES_A = 0
 NES_B = 1
 NES_SELECT = 2
@@ -56,7 +78,7 @@ NES_RIGHT = 7
 
 
 # ============================================================
-# Button constants expected by SeedSigner
+# SeedSigner button constants
 # ============================================================
 
 class HardwareButtonsConstants:
@@ -66,7 +88,6 @@ class HardwareButtonsConstants:
     KEY_RIGHT = 4
 
     KEY_PRESS = 5
-
     KEY1 = 6
     KEY2 = 7
     KEY3 = 8
@@ -99,6 +120,10 @@ class HardwareButtonsConstants:
     ]
 
 
+# ============================================================
+# HardwareButtons singleton
+# ============================================================
+
 class HardwareButtons(Singleton):
 
     @classmethod
@@ -107,10 +132,8 @@ class HardwareButtons(Singleton):
             cls._instance = cls.__new__(cls)
 
             cls._instance.override_ind = False
-
             cls._instance.cur_input = None
             cls._instance.cur_input_started = None
-
             cls._instance.last_input_time = int(time.time() * 1000)
 
             cls._instance.first_repeat_threshold = 225
@@ -120,10 +143,7 @@ class HardwareButtons(Singleton):
 
     def _get_pressed_keys(self):
         states = read_controller()
-
         pressed = []
-
-        # NES -> SeedSigner mapping
 
         if states[NES_UP]:
             pressed.append(HardwareButtonsConstants.KEY_UP)
@@ -137,11 +157,9 @@ class HardwareButtons(Singleton):
         if states[NES_RIGHT]:
             pressed.append(HardwareButtonsConstants.KEY_RIGHT)
 
-        # Start = center/select
         if states[NES_START]:
             pressed.append(HardwareButtonsConstants.KEY_PRESS)
 
-        # A, B, Select become KEY1, KEY2, KEY3
         if states[NES_A]:
             pressed.append(HardwareButtonsConstants.KEY1)
 
@@ -154,11 +172,6 @@ class HardwareButtons(Singleton):
         return pressed
 
     def wait_for(self, keys=[]) -> int:
-        """
-        Block execution until one of the target keys is pressed.
-
-        Optionally override the wait by calling trigger_override().
-        """
 
         from seedsigner.controller import Controller
 
@@ -176,18 +189,11 @@ class HardwareButtons(Singleton):
             if (
                 cur_time - self.last_input_time >
                 controller.screensaver_activation_ms
-                and
-                controller.is_screensaver_start_allowed
+                and controller.is_screensaver_start_allowed
             ):
-
                 controller.start_screensaver()
-
                 self.update_last_input_time()
-
-                time.sleep(
-                    self.next_repeat_threshold / 1000.0
-                )
-
+                time.sleep(self.next_repeat_threshold / 1000.0)
                 continue
 
             pressed = self._get_pressed_keys()
@@ -197,33 +203,25 @@ class HardwareButtons(Singleton):
                 if key in pressed:
 
                     if self.cur_input != key:
-
                         self.cur_input = key
                         self.cur_input_started = cur_time
                         self.last_input_time = cur_time
-
                         return key
 
-                    else:
+                    if (
+                        cur_time - self.last_input_time >
+                        self.next_repeat_threshold
+                    ):
+                        self.cur_input_started = cur_time
+                        self.last_input_time = cur_time
+                        return key
 
-                        if (
-                            cur_time - self.last_input_time >
-                            self.next_repeat_threshold
-                        ):
-
-                            self.cur_input_started = cur_time
-                            self.last_input_time = cur_time
-
-                            return key
-
-                        elif (
-                            cur_time - self.cur_input_started >
-                            self.first_repeat_threshold
-                        ):
-
-                            self.last_input_time = cur_time
-
-                            return key
+                    if (
+                        cur_time - self.cur_input_started >
+                        self.first_repeat_threshold
+                    ):
+                        self.last_input_time = cur_time
+                        return key
 
             time.sleep(0.01)
 
@@ -233,11 +231,7 @@ class HardwareButtons(Singleton):
     def trigger_override(self) -> bool:
         self.override_ind = True
 
-    def check_for_low(
-        self,
-        key: int = None,
-        keys: List[int] = None
-    ) -> bool:
+    def check_for_low(self, key: int = None, keys: List[int] = None) -> bool:
 
         if key:
             keys = [key]
@@ -255,5 +249,5 @@ class HardwareButtons(Singleton):
         return False
 
     def has_any_input(self) -> bool:
-        pressed = self._get_pressed_keys()
-        return len(pressed) > 0
+        return len(self._get_pressed_keys()) > 0
+
