@@ -15,6 +15,8 @@
 
 ## NES → Raspberry Pi (BCM)
 
+You can use other pins. If you do, update the pin numbers in the NES controller wiring section in buttons.py
+
 | NES wire | Raspberry Pi (BCM) |
 |----------|--------------------|
 | WHITE    | 3.3V (Pin 17)      |
