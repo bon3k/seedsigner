@@ -1,0 +1,15 @@
+[Unit]
+Description=Boot Menu
+DefaultDependencies=no
+After=local-fs.target
+Before=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/home/pi/boot-menu/start_boot_menu.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
