@@ -7,11 +7,6 @@ For this setup to work, I have modified:
 - camera.py
 - pivideostream.py
 
-Current issues:
-- Camera colors are inverted.
-- Motion is not as smooth as expected.
-- These issues may be related to RGB/BGR ordering in the ST7789.py and pivideostream.py modifications.
-
 This build runs inside a Python virtual environment (`venv`), not the system Python.
 
 Debian 13 enforces PEP 668 (externally managed Python environments), which prevents installing packages globally using `pip`. For this reason, a virtual environment is required.

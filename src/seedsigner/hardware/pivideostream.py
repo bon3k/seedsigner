@@ -38,7 +38,14 @@ class PiVideoStream:
 
     def update(self):
         while not self.should_stop:
-            self.frame = self.camera.capture_array("main")
+            frame = self.camera.capture_array("main")
+            
+            # OV5647 returns BGR channel order despite requesting RGB888.
+            # Swap red and blue channels (BGR -> RGB).
+            self.frame = frame[..., ::-1]
+            
+#            self.frame = frame[:, :, [2, 1, 0]]
+            
             time.sleep(1 / self.framerate)
 
         logger.info("PiVideoStream: closing everything")
